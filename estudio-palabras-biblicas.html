@@ -507,7 +507,7 @@ async function buscar() {
   }
 }
 
-// ── CLAUDE API CALL ───────────────────────────────────────────────────────────
+// ── CLAUDE API CALL (via Cloudflare Workers CORS proxy) ──────────────────────
 async function llamarClaudeAPI(apiKey, palabra, referencia) {
   const prompt = `Eres un experto en léxico bíblico hebreo y griego con amplio conocimiento de teología bíblica. El usuario estudia la Biblia en español.
 
@@ -519,7 +519,7 @@ Responde ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después, si
   "palabraOriginal": "la palabra en griego o hebreo (caracteres unicode originales)",
   "transliteracion": "transliteración al español fonético",
   "strongs": "número Strong con prefijo G o H (ej. G1343 o H6666)",
-  "idioma": "griego" o "hebreo",
+  "idioma": "griego o hebreo",
   "definicionConsolidada": "Párrafo de 120-180 palabras en español que sintetiza el significado de la palabra a partir de múltiples fuentes lexicales (Strong, Thayer, BDAG para griego; BDB, HALOT para hebreo). Incluye el rango semántico completo, matices teológicos importantes, y cómo el contexto de ${referencia} determina cuál acepción es la correcta.",
   "usoContextual": "Párrafo de 100-150 palabras en español explicando cómo se usaba esta palabra en su mundo original: en la cultura griega/hebrea, en la literatura de la época, con al menos un ejemplo concreto y vívido de uso cotidiano o histórico que ilumine el significado para alguien que no conoce el idioma original.",
   "versiones": {
@@ -532,33 +532,69 @@ Responde ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después, si
   }
 }`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-calls': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1800,
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
+  const payload = {
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1800,
+    messages: [{ role: 'user', content: prompt }]
+  };
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `HTTP ${res.status}`);
+  // Try direct call first (works in some environments)
+  // Fall back to a public CORS proxy if blocked
+  const ENDPOINTS = [
+    {
+      url: 'https://api.anthropic.com/v1/messages',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-calls': 'true'
+      }
+    },
+    {
+      // corsproxy.io is a free, open CORS proxy — just prepends the target URL
+      url: 'https://corsproxy.io/?' + encodeURIComponent('https://api.anthropic.com/v1/messages'),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-calls': 'true'
+      }
+    }
+  ];
+
+  let lastError = null;
+
+  for (const endpoint of ENDPOINTS) {
+    try {
+      const res = await fetch(endpoint.url, {
+        method: 'POST',
+        headers: endpoint.headers,
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      const text = data.content?.find(b => b.type === 'text')?.text || '';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('La respuesta no contiene JSON válido.');
+      return JSON.parse(jsonMatch[0]);
+
+    } catch(e) {
+      lastError = e;
+      // If it's an auth error, no point trying the proxy
+      if (e.message && (e.message.includes('401') || e.message.includes('authentication'))) {
+        throw new Error('Clave API inválida. Verifica que la copiaste completa desde console.anthropic.com');
+      }
+      // Otherwise try next endpoint
+      continue;
+    }
   }
 
-  const data = await res.json();
-  const text = data.content?.find(b => b.type === 'text')?.text || '';
-
-  // Parse JSON from response
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('La respuesta de la API no contiene JSON válido.');
-  return JSON.parse(jsonMatch[0]);
+  throw new Error('No se pudo conectar con la API. Verifica tu conexión a internet. Detalle: ' + (lastError?.message || 'desconocido'));
 }
 
 // ── RENDER RESULTS ────────────────────────────────────────────────────────────
