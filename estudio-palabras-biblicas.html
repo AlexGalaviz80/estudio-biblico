@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estudio de Palabras Bíblicas</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
+
+  :root {
+    --ink:       #1a1a2e;
+    --parchment: #f7f3ec;
+    --gold:      #b8860b;
+    --gold-lt:   #d4a017;
+    --rust:      #8b3a2a;
+    --sage:      #4a6741;
+    --mist:      #e8e2d9;
+    --white:     #ffffff;
+    --shadow:    rgba(26,26,46,0.10);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--parchment);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--ink);
+    padding: 28px 40px 22px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    border-bottom: 3px solid var(--gold);
+  }
+  .header-cross {
+    font-size: 2rem;
+    color: var(--gold);
+    line-height: 1;
+  }
+  header h1 {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.65rem;
+    font-weight: 500;
+    color: var(--white);
+    letter-spacing: 0.01em;
+  }
+  header p {
+    font-size: 0.78rem;
+    color: #a0a8b8;
+    margin-top: 2px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 36px 24px 60px;
+  }
+
+  /* ── API KEY PANEL ── */
+  .api-panel {
+    background: var(--ink);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .api-panel label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #a0a8b8;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+  .api-panel input {
+    flex: 1;
+    min-width: 200px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px;
+    padding: 9px 14px;
+    font-size: 0.85rem;
+    color: var(--white);
+    font-family: 'Inter', monospace;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .api-panel input:focus { border-color: var(--gold); }
+  .api-status {
+    font-size: 0.75rem;
+    padding: 5px 12px;
+    border-radius: 20px;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+  .api-status.ok  { background: rgba(74,103,65,0.35); color: #8ecf7e; }
+  .api-status.err { background: rgba(139,58,42,0.35); color: #f09080; }
+  .api-status.idle{ background: rgba(255,255,255,0.08); color: #a0a8b8; }
+
+  /* ── SEARCH CARD ── */
+  .search-card {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 28px 28px 24px;
+    box-shadow: 0 2px 16px var(--shadow);
+    margin-bottom: 28px;
+  }
+  .search-card h2 {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--mist);
+  }
+  .fields-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 80px 80px;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  @media(max-width:600px) {
+    .fields-row { grid-template-columns: 1fr 1fr; }
+  }
+  .field-group { display: flex; flex-direction: column; gap: 6px; }
+  .field-group label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #7a7a8c;
+  }
+  .field-group input, .field-group select {
+    border: 1.5px solid var(--mist);
+    border-radius: 7px;
+    padding: 10px 12px;
+    font-size: 0.92rem;
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    background: var(--white);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field-group input:focus, .field-group select:focus {
+    border-color: var(--gold);
+  }
+
+  .btn-buscar {
+    width: 100%;
+    background: var(--ink);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    padding: 13px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    transition: background 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .btn-buscar:hover:not(:disabled) { background: #2d2d4e; }
+  .btn-buscar:active:not(:disabled) { transform: scale(0.99); }
+  .btn-buscar:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ── SPINNER ── */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: var(--white);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── RESULTS ── */
+  #results { display: none; }
+
+  .result-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .result-title {
+    font-family: 'EB Garamond', serif;
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  .result-ref {
+    font-size: 0.82rem;
+    color: #7a7a8c;
+    margin-top: 4px;
+    font-style: italic;
+  }
+  .greek-badge {
+    background: var(--ink);
+    color: var(--gold);
+    border-radius: 8px;
+    padding: 10px 16px;
+    text-align: center;
+    min-width: 120px;
+    flex-shrink: 0;
+  }
+  .greek-badge .gk-word {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.4rem;
+    display: block;
+    line-height: 1.2;
+  }
+  .greek-badge .gk-num {
+    font-size: 0.7rem;
+    color: #a0a8b8;
+    margin-top: 3px;
+    display: block;
+    letter-spacing: 0.05em;
+  }
+  .greek-badge .gk-translit {
+    font-size: 0.75rem;
+    color: #c8b87a;
+    margin-top: 2px;
+    display: block;
+    font-style: italic;
+  }
+
+  /* ── SECTION BLOCKS ── */
+  .section-block {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 24px 26px;
+    box-shadow: 0 2px 12px var(--shadow);
+    margin-bottom: 18px;
+  }
+  .section-block h3 {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--mist);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-block h3 .icon { font-size: 1rem; }
+
+  .strongs-entry {
+    background: var(--parchment);
+    border-left: 3px solid var(--gold);
+    border-radius: 0 6px 6px 0;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: #3a3a52;
+  }
+  .strongs-entry strong { color: var(--ink); }
+
+  .ai-content {
+    font-size: 0.93rem;
+    line-height: 1.75;
+    color: #2a2a3e;
+    white-space: pre-wrap;
+  }
+
+  /* ── VERSIONES ── */
+  .versions-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .version-row {
+    display: grid;
+    grid-template-columns: 68px 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  .version-tag {
+    background: var(--ink);
+    color: var(--gold);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-align: center;
+    margin-top: 2px;
+  }
+  .version-text {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.02rem;
+    line-height: 1.65;
+    color: var(--ink);
+  }
+  .version-row.highlight .version-tag {
+    background: var(--gold);
+    color: var(--ink);
+  }
+  .version-row.highlight .version-text {
+    font-weight: 500;
+  }
+
+  /* ── ERROR / EMPTY STATES ── */
+  .msg-error {
+    background: #fff0ee;
+    border: 1px solid #f0c0b8;
+    border-radius: 8px;
+    padding: 16px 20px;
+    color: var(--rust);
+    font-size: 0.9rem;
+    margin-bottom: 18px;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 0.72rem;
+    color: #a0a0b0;
+    border-top: 1px solid var(--mist);
+    margin-top: 40px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-cross">✝</div>
+  <div>
+    <h1>Estudio de Palabras Bíblicas</h1>
+    <p>Léxico hebreo · griego · análisis contextual</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- API KEY -->
+  <div class="api-panel">
+    <label>Clave API Anthropic</label>
+    <input type="password" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off" />
+    <span class="api-status idle" id="apiStatus">Sin verificar</span>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="search-card">
+    <h2>Buscar palabra bíblica</h2>
+    <div class="fields-row">
+      <div class="field-group" style="grid-column: span 2;">
+        <label>Palabra a estudiar</label>
+        <input type="text" id="palabra" placeholder="ej. justicia, gracia, fe…" />
+      </div>
+      <div class="field-group" style="grid-column: span 2;">
+        <label>Referencia bíblica</label>
+        <input type="text" id="referencia" placeholder="ej. Efesios 4:24" />
+      </div>
+    </div>
+    <button class="btn-buscar" id="btnBuscar" onclick="buscar()">
+      <div class="spinner" id="spinner"></div>
+      <span id="btnTexto">Estudiar palabra</span>
+    </button>
+  </div>
+
+  <!-- ERROR -->
+  <div class="msg-error" id="msgError" style="display:none;"></div>
+
+  <!-- RESULTS -->
+  <div id="results">
+
+    <!-- Title row -->
+    <div class="result-header">
+      <div>
+        <div class="result-title" id="rPalabra"></div>
+        <div class="result-ref" id="rRef"></div>
+      </div>
+      <div class="greek-badge" id="greekBadge" style="display:none;">
+        <span class="gk-word" id="gkWord"></span>
+        <span class="gk-translit" id="gkTranslit"></span>
+        <span class="gk-num" id="gkNum"></span>
+      </div>
+    </div>
+
+    <!-- Strong's raw entry -->
+    <div class="section-block" id="secStrongs" style="display:none;">
+      <h3><span class="icon">📖</span> Entrada Strong's (dominio público)</h3>
+      <div class="strongs-entry" id="strongsContent"></div>
+    </div>
+
+    <!-- AI Definition -->
+    <div class="section-block">
+      <h3><span class="icon">🔍</span> Definición consolidada</h3>
+      <div class="ai-content" id="aiDefinicion"></div>
+    </div>
+
+    <!-- AI Usage note -->
+    <div class="section-block">
+      <h3><span class="icon">📜</span> Uso en el mundo bíblico</h3>
+      <div class="ai-content" id="aiUso"></div>
+    </div>
+
+    <!-- Versions -->
+    <div class="section-block">
+      <h3><span class="icon">📚</span> El versículo en distintas versiones</h3>
+      <div class="versions-grid" id="versiones"></div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  Datos lexicales: Strong's Exhaustive Concordance (dominio público) · Análisis: Anthropic Claude API · Solo para uso de estudio personal
+</footer>
+
+<script>
+// ── STRONG'S DICTIONARIES (loaded once from GitHub) ──────────────────────────
+let greekDict = null;
+let hebrewDict = null;
+
+async function loadDictionaries() {
+  if (!greekDict) {
+    try {
+      const gRes = await fetch('https://raw.githubusercontent.com/openscriptures/strongs/master/greek/strongs-greek-dictionary.js');
+      const gText = await gRes.text();
+      const gJson = gText.match(/var strongsGreekDictionary\s*=\s*(\{[\s\S]*\});/);
+      if (gJson) greekDict = JSON.parse(gJson[1]);
+    } catch(e) { console.warn('No se pudo cargar diccionario griego:', e); }
+  }
+  if (!hebrewDict) {
+    try {
+      const hRes = await fetch('https://raw.githubusercontent.com/openscriptures/strongs/master/hebrew/strongs-hebrew-dictionary.js');
+      const hText = await hRes.text();
+      const hJson = hText.match(/var strongsHebrewDictionary\s*=\s*(\{[\s\S]*\});/);
+      if (hJson) hebrewDict = JSON.parse(hJson[1]);
+    } catch(e) { console.warn('No se pudo cargar diccionario hebreo:', e); }
+  }
+}
+
+function lookupStrongs(num) {
+  if (!num) return null;
+  const key = num.toUpperCase();
+  if (key.startsWith('G') && greekDict) return greekDict[key] || null;
+  if (key.startsWith('H') && hebrewDict) return hebrewDict[key] || null;
+  return null;
+}
+
+// ── API KEY STATUS ────────────────────────────────────────────────────────────
+document.getElementById('apiKey').addEventListener('input', () => {
+  const val = document.getElementById('apiKey').value.trim();
+  const st  = document.getElementById('apiStatus');
+  if (val.startsWith('sk-ant-')) {
+    st.textContent = 'Clave ingresada'; st.className = 'api-status ok';
+  } else if (val.length > 0) {
+    st.textContent = 'Formato incorrecto'; st.className = 'api-status err';
+  } else {
+    st.textContent = 'Sin verificar'; st.className = 'api-status idle';
+  }
+});
+
+// ── MAIN SEARCH ───────────────────────────────────────────────────────────────
+async function buscar() {
+  const apiKey    = document.getElementById('apiKey').value.trim();
+  const palabra   = document.getElementById('palabra').value.trim();
+  const referencia= document.getElementById('referencia').value.trim();
+
+  // Validaciones
+  if (!apiKey || !apiKey.startsWith('sk-ant-')) {
+    mostrarError('Por favor ingresa tu clave API de Anthropic (empieza con sk-ant-).');
+    return;
+  }
+  if (!palabra) { mostrarError('Escribe la palabra que quieres estudiar.'); return; }
+  if (!referencia) { mostrarError('Escribe la referencia bíblica (ej. Efesios 4:24).'); return; }
+
+  ocultarError();
+  setLoading(true);
+  document.getElementById('results').style.display = 'none';
+
+  try {
+    await loadDictionaries();
+    const data = await llamarClaudeAPI(apiKey, palabra, referencia);
+    mostrarResultados(data, palabra, referencia);
+  } catch(e) {
+    mostrarError('Error al consultar la API: ' + e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── CLAUDE API CALL ───────────────────────────────────────────────────────────
+async function llamarClaudeAPI(apiKey, palabra, referencia) {
+  const prompt = `Eres un experto en léxico bíblico hebreo y griego con amplio conocimiento de teología bíblica. El usuario estudia la Biblia en español.
+
+TAREA: Estudiar la palabra "${palabra}" tal como aparece en ${referencia} (Reina Valera 1960).
+
+Responde ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después, sin bloques de código, con esta estructura exacta:
+
+{
+  "palabraOriginal": "la palabra en griego o hebreo (caracteres unicode originales)",
+  "transliteracion": "transliteración al español fonético",
+  "strongs": "número Strong con prefijo G o H (ej. G1343 o H6666)",
+  "idioma": "griego" o "hebreo",
+  "definicionConsolidada": "Párrafo de 120-180 palabras en español que sintetiza el significado de la palabra a partir de múltiples fuentes lexicales (Strong, Thayer, BDAG para griego; BDB, HALOT para hebreo). Incluye el rango semántico completo, matices teológicos importantes, y cómo el contexto de ${referencia} determina cuál acepción es la correcta.",
+  "usoContextual": "Párrafo de 100-150 palabras en español explicando cómo se usaba esta palabra en su mundo original: en la cultura griega/hebrea, en la literatura de la época, con al menos un ejemplo concreto y vívido de uso cotidiano o histórico que ilumine el significado para alguien que no conoce el idioma original.",
+  "versiones": {
+    "RVR60": "versículo completo en Reina Valera 1960",
+    "NVI": "versículo completo en Nueva Versión Internacional",
+    "NTV": "versículo completo en Nueva Traducción Viviente",
+    "LBLA": "versículo completo en La Biblia de las Américas",
+    "DHH": "versículo completo en Dios Habla Hoy",
+    "TLA": "versículo completo en Traducción en Lenguaje Actual"
+  }
+}`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-calls': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1800,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  const text = data.content?.find(b => b.type === 'text')?.text || '';
+
+  // Parse JSON from response
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('La respuesta de la API no contiene JSON válido.');
+  return JSON.parse(jsonMatch[0]);
+}
+
+// ── RENDER RESULTS ────────────────────────────────────────────────────────────
+function mostrarResultados(data, palabraBuscada, referencia) {
+  // Header
+  document.getElementById('rPalabra').textContent = palabraBuscada.charAt(0).toUpperCase() + palabraBuscada.slice(1);
+  document.getElementById('rRef').textContent = referencia + ' · ' + (data.idioma === 'hebreo' ? 'Hebreo' : 'Griego') + ' bíblico';
+
+  // Greek/Hebrew badge
+  if (data.palabraOriginal) {
+    document.getElementById('gkWord').textContent     = data.palabraOriginal;
+    document.getElementById('gkTranslit').textContent = data.transliteracion || '';
+    document.getElementById('gkNum').textContent      = data.strongs || '';
+    document.getElementById('greekBadge').style.display = 'block';
+  }
+
+  // Strong's raw entry from public domain dictionary
+  const strongsEntry = lookupStrongs(data.strongs);
+  if (strongsEntry) {
+    const lemma   = strongsEntry.lemma   || data.palabraOriginal || '';
+    const translit= strongsEntry.translit || data.transliteracion || '';
+    const def     = strongsEntry.strongs_def || '';
+    const deriv   = strongsEntry.derivation  || '';
+    const kjv     = strongsEntry.kjv_def     || '';
+    document.getElementById('strongsContent').innerHTML =
+      `<strong>${lemma}</strong> (${translit}) — ${data.strongs}<br>` +
+      `<strong>Definición Strong:</strong> ${def}<br>` +
+      (deriv ? `<strong>Etimología:</strong> ${deriv}<br>` : '') +
+      (kjv   ? `<strong>Traducciones KJV:</strong> ${kjv}` : '');
+    document.getElementById('secStrongs').style.display = 'block';
+  } else {
+    document.getElementById('secStrongs').style.display = 'none';
+  }
+
+  // AI sections
+  document.getElementById('aiDefinicion').textContent = data.definicionConsolidada || '';
+  document.getElementById('aiUso').textContent        = data.usoContextual         || '';
+
+  // Versions
+  const orden    = ['RVR60','NVI','NTV','LBLA','DHH','TLA'];
+  const nombres  = { RVR60:'RV 1960', NVI:'NVI', NTV:'NTV', LBLA:'LBLA', DHH:'DHH', TLA:'TLA' };
+  const grid     = document.getElementById('versiones');
+  grid.innerHTML = '';
+  orden.forEach(sigla => {
+    const texto = data.versiones?.[sigla];
+    if (!texto) return;
+    const row = document.createElement('div');
+    row.className = 'version-row' + (sigla === 'RVR60' ? ' highlight' : '');
+    row.innerHTML = `<div class="version-tag">${nombres[sigla]}</div><div class="version-text">${texto}</div>`;
+    grid.appendChild(row);
+  });
+
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function setLoading(on) {
+  document.getElementById('btnBuscar').disabled = on;
+  document.getElementById('spinner').style.display  = on ? 'block' : 'none';
+  document.getElementById('btnTexto').textContent   = on ? 'Consultando…' : 'Estudiar palabra';
+}
+function mostrarError(msg) {
+  const el = document.getElementById('msgError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function ocultarError() {
+  document.getElementById('msgError').style.display = 'none';
+}
+
+// Enter key support
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !document.getElementById('btnBuscar').disabled) buscar();
+});
+</script>
+</body>
+</html>
